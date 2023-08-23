@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net"
+	"time"
 
 	proxyproto "github.com/pires/go-proxyproto"
 )
@@ -16,21 +17,29 @@ func main() {
 	}
 
 	// Wrap listener in a proxyproto listener
-	proxyListener := &proxyproto.Listener{Listener: list}
+	proxyListener := &proxyproto.Listener{Listener: list, Policy: func(upstream net.Addr) (proxyproto.Policy, error) {
+		time.Sleep(10 * time.Second)
+		return proxyproto.REQUIRE, nil
+	}}
 	defer proxyListener.Close()
 
-	// Wait for a connection and accept it
-	conn, err := proxyListener.Accept()
-	defer conn.Close()
+	for {
+		// Wait for a connection and accept it
+		conn, err := proxyListener.Accept()
+		if err != nil {
+			panic(err)
+		}
+		defer conn.Close()
 
-	// Print connection details
-	if conn.LocalAddr() == nil {
-		log.Fatal("couldn't retrieve local address")
-	}
-	log.Printf("local address: %q", conn.LocalAddr().String())
+		// Print connection details
+		if conn.LocalAddr() == nil {
+			log.Fatal("couldn't retrieve local address")
+		}
+		log.Printf("local address: %q", conn.LocalAddr().String())
 
-	if conn.RemoteAddr() == nil {
-		log.Fatal("couldn't retrieve remote address")
+		if conn.RemoteAddr() == nil {
+			log.Fatal("couldn't retrieve remote address")
+		}
+		log.Printf("remote address: %q", conn.RemoteAddr().String())
 	}
-	log.Printf("remote address: %q", conn.RemoteAddr().String())
 }
